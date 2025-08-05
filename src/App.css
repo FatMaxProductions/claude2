@@ -1,0 +1,54 @@
+.App {
+  text-align: left;
+}
+
+/* Additional custom styles for Project Loom */
+.loom-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.loom-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.loom-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.persona-avatar {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.environment-card {
+  border: 2px solid transparent;
+  background: linear-gradient(white, white) padding-box,
+              linear-gradient(135deg, #667eea, #764ba2) border-box;
+}
+
+.chat-message {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.typing-indicator {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.trait-badge {
+  transition: all 0.2s ease;
+}
+
+.trait-badge:hover {
+  transform: scale(1.05);
+}
