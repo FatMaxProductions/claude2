@@ -717,22 +717,23 @@ const ProjectLoomApp = () => {
     const [selectedEnvironment, setSelectedEnvironment] = useState(null);
     const [userMessage, setUserMessage] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
+    const [localChatHistory, setLocalChatHistory] = useState([]);
     const chatRef = useRef(null);
 
     useEffect(() => {
       if (chatRef.current) {
         chatRef.current.scrollTop = chatRef.current.scrollHeight;
       }
-    }, [chatHistory]);
+    }, [localChatHistory]);
 
     const startSimulation = (environment) => {
       console.log('Starting simulation with environment:', environment);
       setSelectedEnvironment(environment);
-      setChatHistory([]);
+      setLocalChatHistory([]);
       
       // Add starting prompt if exists
       if (environment.startingPrompt) {
-        setChatHistory([{
+        setLocalChatHistory([{
           id: Date.now(),
           type: 'system',
           content: environment.startingPrompt,
@@ -770,7 +771,7 @@ const ProjectLoomApp = () => {
         llm: persona.llm
       };
       
-      setChatHistory(prev => [...prev, newMessage]);
+      setLocalChatHistory(prev => [...prev, newMessage]);
       setIsProcessing(false);
       
       return newMessage;
@@ -821,7 +822,7 @@ const ProjectLoomApp = () => {
       const chatData = {
         environment: selectedEnvironment?.name,
         participants: selectedEnvironment?.participants.map(p => p.name),
-        messages: chatHistory,
+        messages: localChatHistory,
         exportedAt: new Date().toISOString()
       };
       
@@ -941,7 +942,7 @@ const ProjectLoomApp = () => {
                 <button
                   onClick={() => {
                     setSelectedEnvironment(null);
-                    setChatHistory([]);
+                    setLocalChatHistory([]);
                     setIsSimulationRunning(false);
                   }}
                   className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
@@ -981,14 +982,14 @@ const ProjectLoomApp = () => {
           {/* Chat Area */}
           <div className="flex-1 overflow-hidden flex flex-col">
             <div ref={chatRef} className="flex-1 overflow-y-auto p-6 space-y-4">
-              {chatHistory.length === 0 && !isProcessing && (
+              {localChatHistory.length === 0 && !isProcessing && (
                 <div className="text-center text-gray-500 py-12">
                   <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>Simulation ready. Start the conversation!</p>
                 </div>
               )}
               
-              {chatHistory.map(message => (
+              {localChatHistory.map(message => (
                 <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-3xl rounded-lg p-4 ${
                     message.type === 'system' 
