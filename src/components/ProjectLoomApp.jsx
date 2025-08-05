@@ -723,9 +723,10 @@ const ProjectLoomApp = () => {
       if (chatRef.current) {
         chatRef.current.scrollTop = chatRef.current.scrollHeight;
       }
-    }, []);
+    }, [chatHistory]);
 
     const startSimulation = (environment) => {
+      console.log('Starting simulation with environment:', environment);
       setSelectedEnvironment(environment);
       setChatHistory([]);
       
