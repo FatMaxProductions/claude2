@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Users, MessageCircle, Settings, Play, Pause, Send, Upload, Trash2, Edit, Eye, EyeOff, Download, Loader2 } from 'lucide-react';
+import { Plus, Users, MessageCircle, Settings, Play, Pause, Send, Upload, Trash2, Eye, EyeOff, Download, Loader2 } from 'lucide-react';
 
 // Main App Component
 const ProjectLoomApp = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [personas, setPersonas] = useState([]);
   const [environments, setEnvironments] = useState([]);
-  const [activeSimulation, setActiveSimulation] = useState(null);
   const [chatHistory, setChatHistory] = useState([]);
   const [isSimulationRunning, setIsSimulationRunning] = useState(false);
 
@@ -716,7 +715,6 @@ const ProjectLoomApp = () => {
   // Simulation Component
   const Simulation = () => {
     const [selectedEnvironment, setSelectedEnvironment] = useState(null);
-    const [currentTurn, setCurrentTurn] = useState(0);
     const [userMessage, setUserMessage] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const chatRef = useRef(null);
@@ -725,13 +723,11 @@ const ProjectLoomApp = () => {
       if (chatRef.current) {
         chatRef.current.scrollTop = chatRef.current.scrollHeight;
       }
-    }, [chatHistory]);
+    }, []);
 
     const startSimulation = (environment) => {
       setSelectedEnvironment(environment);
-      setActiveSimulation(environment);
       setChatHistory([]);
-      setCurrentTurn(0);
       
       // Add starting prompt if exists
       if (environment.startingPrompt) {
@@ -789,7 +785,6 @@ const ProjectLoomApp = () => {
         for (const persona of participants) {
           if (!isSimulationRunning) break;
           await simulateAIResponse(persona, selectedEnvironment.startingPrompt);
-          setCurrentTurn(prev => prev + 1);
           await new Promise(resolve => setTimeout(resolve, 1000)); // Brief pause between responses
         }
       }
@@ -800,7 +795,6 @@ const ProjectLoomApp = () => {
     const handleManualTurn = async (persona) => {
       if (isProcessing) return;
       await simulateAIResponse(persona);
-      setCurrentTurn(prev => prev + 1);
     };
 
     const handleUserMessage = () => {
@@ -946,7 +940,6 @@ const ProjectLoomApp = () => {
                 <button
                   onClick={() => {
                     setSelectedEnvironment(null);
-                    setActiveSimulation(null);
                     setChatHistory([]);
                     setIsSimulationRunning(false);
                   }}
