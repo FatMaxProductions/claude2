@@ -935,12 +935,18 @@ const ProjectLoomApp = () => {
   };
 
   // Simulation Component
-  const Simulation = () => {
+    const Simulation = () => {
     const [selectedEnvironment, setSelectedEnvironment] = useState(null);
     const [userMessage, setUserMessage] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [localChatHistory, setLocalChatHistory] = useState([]);
     const chatRef = useRef(null);
+    const [isSimulationRunning, setIsSimulationRunning] = useState(false);
+    const simulationRunningRef = useRef(false);
+
+useEffect(() => {
+    simulationRunningRef.current = isSimulationRunning;
+  }, [isSimulationRunning]);
 
     useEffect(() => {
       if (chatRef.current) {
@@ -1019,22 +1025,45 @@ const ProjectLoomApp = () => {
     };
 
     const handleAutoLoop = async () => {
-      if (!selectedEnvironment || isProcessing) return;
-      
-      setIsSimulationRunning(true);
-      const participants = selectedEnvironment.participants;
-      
-      for (let i = 0; i < 3; i++) { // Run 3 rounds
-        for (const persona of participants) {
-          if (!isSimulationRunning) break;
-          await simulateAIResponse(persona, selectedEnvironment.startingPrompt);
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Brief pause between responses
-        }
-      }
-      
-      setIsSimulationRunning(false);
-    };
-
+  if (!selectedEnvironment || isProcessing) return;
+  
+  setIsSimulationRunning(true);
+  const participants = selectedEnvironment.participants;
+  let currentRound = 0;
+  const maxRounds = 5; // Make this configurable later
+  
+  const runNextTurn = async () => {
+  if (!simulationRunningRef.current) return;  // ← This line is HERE
+  if (currentRound >= maxRounds) {
+    setIsSimulationRunning(false);
+    return;
+  }
+  
+  for (let i = 0; i < participants.length; i++) {
+    if (!simulationRunningRef.current) break;  // ← This line is HERE
+    
+    const persona = participants[i];
+    try {
+      await simulateAIResponse(persona, selectedEnvironment.startingPrompt);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    } catch (error) {
+      console.error('Error in auto-loop:', error);
+      continue;
+    }
+    
+    if (!simulationRunningRef.current) break;  // ← And this line is HERE
+  }
+  
+  currentRound++;
+  if (simulationRunningRef.current && currentRound < maxRounds) {
+    setTimeout(runNextTurn, 1000);
+  } else {
+    setIsSimulationRunning(false);
+  }
+};
+  
+  runNextTurn();
+};
     const handleManualTurn = async (persona) => {
       if (isProcessing) return;
       await simulateAIResponse(persona);
