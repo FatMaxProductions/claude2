@@ -808,7 +808,7 @@ const ProjectLoomApp = () => {
         timestamp: new Date().toLocaleTimeString()
       };
       
-      setChatHistory(prev => [...prev, newMessage]);
+      setLocalChatHistory(prev => [...prev, newMessage]);
       setUserMessage('');
     };
 
