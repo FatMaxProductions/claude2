@@ -1,11 +1,3 @@
-              />
-              
-              <div className="flex space-x-4 mb-4">
-                <button
-                  type="button"
-                  onClick={generateBackstory}
-                  disabled={isGeneratingBackstory || !formData.name || !formData.role}
-                  className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {isGeneratingBackstory ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -68,7 +60,7 @@
     );
   };
 
-  // Create Environment Component (keeping existing implementation)
+  // Create Environment Component
   const CreateEnvironment = () => {
     const [formData, setFormData] = useState({
       name: '',
@@ -135,7 +127,7 @@
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder='e.g., "Team Brainstorm" or "Interrogation Room"'
+                placeholder="Team Brainstorm or Interrogation Room"
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
@@ -147,7 +139,7 @@
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Optional context or notes (e.g., simulation goals or background)"
+                placeholder="Optional context or notes"
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 rows="3"
               />
@@ -204,7 +196,7 @@
                   />
                   <div>
                     <span className="font-medium">🔁 Auto-loop</span>
-                    <p className="text-sm text-gray-600">Personas talk to each other in a round-robin or scenario-based cycle</p>
+                    <p className="text-sm text-gray-600">Personas talk to each other automatically</p>
                   </div>
                 </label>
                 <label className="flex items-start">
@@ -218,7 +210,7 @@
                   />
                   <div>
                     <span className="font-medium">🎮 Manual</span>
-                    <p className="text-sm text-gray-600">User controls who speaks next and can insert prompts</p>
+                    <p className="text-sm text-gray-600">User controls who speaks next</p>
                   </div>
                 </label>
                 <label className="flex items-start">
@@ -232,7 +224,7 @@
                   />
                   <div>
                     <span className="font-medium">🧍 Mixed</span>
-                    <p className="text-sm text-gray-600">User and AI personas both participate (human moderator)</p>
+                    <p className="text-sm text-gray-600">User and AI personas both participate</p>
                   </div>
                 </label>
               </div>
@@ -251,9 +243,9 @@
                   className="w-full"
                 />
                 <div className="flex justify-between text-sm text-gray-600">
-                  <span>50 words (short sentence)</span>
+                  <span>50 words</span>
                   <span className="font-medium">{formData.wordLimit} words</span>
-                  <span>500 words (full response)</span>
+                  <span>500 words</span>
                 </div>
               </div>
             </div>
@@ -264,18 +256,10 @@
               <textarea
                 value={formData.startingPrompt}
                 onChange={(e) => setFormData(prev => ({ ...prev, startingPrompt: e.target.value }))}
-                placeholder="Set the opening line, scenario, or context for the conversation..."
+                placeholder="Set the opening scenario for the conversation..."
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 rows="3"
               />
-              <div className="mt-2 text-sm text-gray-600">
-                <p className="font-medium mb-1">Examples:</p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>"You've just been hired. The team is skeptical."</li>
-                  <li>"There's been a breach in the system. Respond."</li>
-                  <li>"You're meeting for the first time to plan a heist."</li>
-                </ul>
-              </div>
             </div>
 
             {/* Human Moderator */}
@@ -289,7 +273,6 @@
                 />
                 <span className="font-medium">Enable Human Moderator</span>
               </label>
-              <p className="text-sm text-gray-600 ml-6">Allows user to interject, control turn order, and add manual notes</p>
             </div>
 
             {/* Preview Participants */}
@@ -314,7 +297,7 @@
                           <span className="text-sm text-gray-500">{persona.llm}</span>
                         </div>
                         <p className="text-sm text-gray-700 mb-2"><strong>Role:</strong> {persona.role}</p>
-                        {persona.traits.length > 0 && (
+                        {persona.traits && persona.traits.length > 0 && (
                           <div className="mb-2">
                             <strong className="text-sm">Traits:</strong>
                             <div className="flex flex-wrap gap-1 mt-1">
@@ -354,7 +337,7 @@
     );
   };
 
-  // Enhanced Simulation Component with Real AI Integration
+  // Simulation Component with Real AI Integration
   const Simulation = () => {
     const [selectedEnvironment, setSelectedEnvironment] = useState(null);
     const [userMessage, setUserMessage] = useState('');
@@ -373,7 +356,6 @@
       setSelectedEnvironment(environment);
       setLocalChatHistory([]);
       
-      // Add starting prompt if exists
       if (environment.startingPrompt) {
         setLocalChatHistory([{
           id: Date.now(),
@@ -384,21 +366,23 @@
       }
     };
 
-    const simulateAIResponse = async (persona, context = '') => {
+    const simulateAIResponse = async (persona) => {
       setIsProcessing(true);
       
       try {
-        // Get conversation context for AI
         const conversationContext = localChatHistory.filter(msg => msg.type !== 'system');
         
         let response;
+        let isRealAI = false;
+        
         if (apiKeys.openai && persona.llm === 'ChatGPT (OpenAI)') {
           response = await callRealAI(persona, conversationContext);
+          isRealAI = true;
         } else if (apiKeys.claude && persona.llm === 'Claude (Anthropic)') {
           response = await callRealAI(persona, conversationContext);
+          isRealAI = true;
         } else {
-          // Fallback to enhanced simulated response
-          response = getEnhancedSimulatedResponse(persona, context);
+          response = getEnhancedSimulatedResponse(persona);
           await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 2000));
         }
         
@@ -409,7 +393,7 @@
           content: response,
           timestamp: new Date().toLocaleTimeString(),
           llm: persona.llm,
-          isRealAI: (apiKeys.openai && persona.llm === 'ChatGPT (OpenAI)') || (apiKeys.claude && persona.llm === 'Claude (Anthropic)')
+          isRealAI
         };
         
         setLocalChatHistory(prev => [...prev, newMessage]);
@@ -418,13 +402,12 @@
         return newMessage;
       } catch (error) {
         console.error('AI Response Error:', error);
-        // Fallback on error
-        const fallbackResponse = getEnhancedSimulatedResponse(persona, context);
+        const fallbackResponse = getEnhancedSimulatedResponse(persona);
         const newMessage = {
           id: Date.now(),
           type: 'ai',
           persona: persona.name,
-          content: `[Connection Error - Using Fallback]: ${fallbackResponse}`,
+          content: `[Connection Error]: ${fallbackResponse}`,
           timestamp: new Date().toLocaleTimeString(),
           llm: persona.llm,
           isRealAI: false
@@ -436,10 +419,9 @@
       }
     };
 
-    const getEnhancedSimulatedResponse = (persona, context) => {
-      // Enhanced simulation that uses traits more effectively
-      const traitNames = persona.traits.map(t => t.name.toLowerCase());
-      const strongTraits = persona.traits.filter(t => t.intensity === 'Strong').map(t => t.name.toLowerCase());
+    const getEnhancedSimulatedResponse = (persona) => {
+      const traitNames = persona.traits ? persona.traits.map(t => t.name.toLowerCase()) : [];
+      const strongTraits = persona.traits ? persona.traits.filter(t => t.intensity === 'Strong').map(t => t.name.toLowerCase()) : [];
       
       let responseStyle = '';
       if (strongTraits.includes('blunt')) responseStyle = 'direct and straightforward';
@@ -448,13 +430,13 @@
       else if (strongTraits.includes('analytical')) responseStyle = 'systematic and logical';
       
       const responses = [
-        `Speaking as ${persona.name}, a ${persona.role.toLowerCase()}, I bring a ${responseStyle} perspective to this discussion. Based on my ${traitNames.join(', ')} nature, I believe we need to consider the broader implications here.`,
+        `Speaking as ${persona.name}, I bring a ${responseStyle || 'thoughtful'} perspective to this discussion. Based on my ${traitNames.length ? traitNames.join(', ') : 'balanced'} nature, I believe we need to consider the broader implications here.`,
         
-        `From my experience as ${persona.role.toLowerCase()}, and given my ${strongTraits.join(' and ') || 'balanced'} approach, I see this differently. Let me share what stands out to me about ${context || 'this situation'}.`,
+        `From my experience as ${persona.role}, and given my ${strongTraits.length ? strongTraits.join(' and ') : 'balanced'} approach, I see this differently. Let me share what stands out to me about this situation.`,
         
-        `As someone who tends to be ${traitNames.slice(0, 3).join(', ')}, I think we're missing a key perspective here. My role as ${persona.role.toLowerCase()} has taught me that sustainable solutions require us to balance multiple viewpoints.`,
+        `As someone who tends to be ${traitNames.slice(0, 3).join(', ') || 'thoughtful'}, I think we're missing a key perspective here. My role has taught me that sustainable solutions require us to balance multiple viewpoints.`,
         
-        `I appreciate the discussion so far. Speaking from my ${strongTraits.join(' and ') || 'thoughtful'} perspective as ${persona.name}, I'd like to challenge some of the assumptions we're making and propose an alternative approach.`
+        `I appreciate the discussion so far. Speaking from my ${strongTraits.length ? strongTraits.join(' and ') : 'analytical'} perspective, I'd like to challenge some assumptions and propose an alternative approach.`
       ];
       
       return responses[Math.floor(Math.random() * responses.length)];
@@ -466,11 +448,11 @@
       setIsSimulationRunning(true);
       const participants = selectedEnvironment.participants;
       
-      for (let i = 0; i < 3; i++) { // Run 3 rounds
+      for (let i = 0; i < 3; i++) {
         for (const persona of participants) {
           if (!isSimulationRunning) break;
-          await simulateAIResponse(persona, selectedEnvironment.startingPrompt);
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Brief pause between responses
+          await simulateAIResponse(persona);
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
       
@@ -525,7 +507,6 @@
           <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8">
             <h2 className="text-3xl font-bold text-gray-800 mb-6">Select an Environment</h2>
             
-            {/* AI Status */}
             <div className="mb-6 p-4 rounded-lg border-2 border-dashed border-gray-300">
               <div className="flex items-center justify-between">
                 <div>
@@ -577,7 +558,6 @@
                           </span>
                         ))}
                       </div>
-                      {/* AI Status per participant */}
                       <div className="text-xs text-gray-500">
                         Real AI: {env.participants.filter(p => 
                           (p.llm === 'ChatGPT (OpenAI)' && apiKeys.openai) ||
@@ -612,7 +592,6 @@
     return (
       <div className="max-w-6xl mx-auto p-6">
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 h-[80vh] flex flex-col">
-          {/* Header */}
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div>
@@ -668,7 +647,6 @@
             </div>
           </div>
 
-          {/* Participants Bar */}
           <div className="p-4 border-b border-gray-200 bg-gray-50">
             <div className="flex space-x-4 overflow-x-auto">
               {selectedEnvironment.participants.map(participant => {
@@ -694,7 +672,117 @@
                         disabled={isProcessing}
                         className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 disabled:bg-gray-400"
                       >
-                import React, { useState, useEffect, useRef } from 'react';
+                        Speak
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <div ref={chatRef} className="flex-1 overflow-y-auto p-6 space-y-4">
+              {localChatHistory.length === 0 && !isProcessing && (
+                <div className="text-center text-gray-500 py-12">
+                  <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Simulation ready. Start the conversation!</p>
+                  {!(apiKeys.openai || apiKeys.claude) && (
+                    <p className="text-sm mt-2 text-yellow-600">
+                      💡 Add API keys for real AI conversations
+                    </p>
+                  )}
+                </div>
+              )}
+              
+              {localChatHistory.map(message => (
+                <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-3xl rounded-lg p-4 ${
+                    message.type === 'system' 
+                      ? 'bg-yellow-50 border border-yellow-200 text-yellow-800 text-center w-full'
+                      : message.type === 'user'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {message.type === 'ai' && (
+                      <div className="flex items-center mb-2">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-semibold mr-2 ${
+                          message.isRealAI ? 'bg-green-500' : 'bg-purple-500'
+                        }`}>
+                          {message.persona.charAt(0)}
+                        </div>
+                        <span className="font-semibold text-sm">{message.persona}</span>
+                        <span className="text-xs text-gray-500 ml-2">
+                          via {message.llm.split(' ')[0]} {message.isRealAI ? '🤖' : '🎭'}
+                        </span>
+                      </div>
+                    )}
+                    {message.type === 'user' && (
+                      <div className="flex items-center mb-2">
+                        <span className="font-semibold text-sm">You</span>
+                      </div>
+                    )}
+                    <p className="text-sm leading-relaxed">{message.content}</p>
+                    <p className="text-xs opacity-70 mt-2">{message.timestamp}</p>
+                  </div>
+                </div>
+              ))}
+              
+              {isProcessing && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 rounded-lg p-4 flex items-center">
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    <span className="text-sm text-gray-600">
+                      {(apiKeys.openai || apiKeys.claude) ? 'Real AI is thinking...' : 'Simulating response...'}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {(selectedEnvironment.interactionMode === 'mixed' || selectedEnvironment.humanModerator) && (
+              <div className="p-4 border-t border-gray-200">
+                <div className="flex space-x-3">
+                  <input
+                    type="text"
+                    value={userMessage}
+                    onChange={(e) => setUserMessage(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleUserMessage()}
+                    placeholder="Type your message..."
+                    className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <button
+                    onClick={handleUserMessage}
+                    disabled={!userMessage.trim()}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Main render
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navigation />
+      <main>
+        {showApiSettings && <ApiSettings />}
+        {!showApiSettings && currentPage === 'dashboard' && <Dashboard />}
+        {!showApiSettings && currentPage === 'create-persona' && <CreatePersona />}
+        {!showApiSettings && currentPage === 'create-environment' && <CreateEnvironment />}
+        {!showApiSettings && currentPage === 'simulation' && <Simulation />}
+      </main>
+    </div>
+  );
+};
+
+export default ProjectLoomApp;import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Users, MessageCircle, Settings, Play, Pause, Send, Upload, Trash2, Eye, EyeOff, Download, Loader2, Key } from 'lucide-react';
 
 // Main App Component
@@ -752,11 +840,6 @@ const ProjectLoomApp = () => {
     }
 
     const systemPrompt = buildSystemPrompt(persona);
-    const conversationHistory = messages.map(msg => 
-      `${msg.type === 'user' ? 'Human' : 'Assistant'}: ${msg.content}`
-    ).join('\n\n');
-
-    const prompt = `${systemPrompt}\n\nConversation so far:\n${conversationHistory}\n\nAssistant:`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -836,9 +919,9 @@ const ProjectLoomApp = () => {
 
   const getSimulatedResponse = (persona) => {
     const responses = [
-      `As ${persona.name}, given my role as ${persona.role.toLowerCase()}, I think we should approach this systematically. My experience tells me that this situation requires careful consideration of all stakeholders involved.`,
+      `As ${persona.name}, given my role as ${persona.role}, I think we should approach this systematically. My experience tells me that this situation requires careful consideration of all stakeholders involved.`,
       
-      `Speaking from my perspective as ${persona.role.toLowerCase()}, I'd like to challenge some assumptions here. We're looking at this from a narrow perspective, and I believe we need to expand our thinking beyond conventional solutions.`,
+      `Speaking from my perspective as ${persona.role}, I'd like to challenge some assumptions here. We're looking at this from a narrow perspective, and I believe we need to expand our thinking beyond conventional solutions.`,
       
       `I appreciate the different viewpoints being shared. From my analytical perspective, I see several patterns emerging that we should address. Let me break down what I'm observing and propose a path forward.`,
       
@@ -1064,12 +1147,12 @@ const ProjectLoomApp = () => {
                 <p className="text-sm text-gray-600 mb-2">{persona.llm}</p>
                 <p className="text-sm text-gray-700">{persona.role}</p>
                 <div className="mt-2 flex flex-wrap gap-1">
-                  {persona.traits.slice(0, 3).map((trait, i) => (
+                  {persona.traits && persona.traits.slice(0, 3).map((trait, i) => (
                     <span key={i} className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
                       {trait.name} ({trait.intensity})
                     </span>
                   ))}
-                  {persona.traits.length > 3 && (
+                  {persona.traits && persona.traits.length > 3 && (
                     <span className="text-xs text-gray-500">+{persona.traits.length - 3} more</span>
                   )}
                 </div>
@@ -1081,7 +1164,7 @@ const ProjectLoomApp = () => {
     </div>
   );
 
-  // Create Persona Component (keeping existing implementation but adding wordLimit)
+  // Create Persona Component
   const CreatePersona = () => {
     const [formData, setFormData] = useState({
       name: '',
@@ -1129,9 +1212,9 @@ const ProjectLoomApp = () => {
       // Simulate AI backstory generation
       setTimeout(() => {
         const backstories = [
-          `${formData.name} grew up in a family of engineers, developing a keen analytical mind and attention to detail. Their ${formData.role.toLowerCase()} stems from years of observing complex systems and finding elegant solutions to intricate problems.`,
-          `With a background in creative arts and business strategy, ${formData.name} brings a unique perspective to their role as ${formData.role.toLowerCase()}. They believe in challenging conventional wisdom and pushing boundaries.`,
-          `${formData.name} started their career in a completely different field before discovering their passion for ${formData.role.toLowerCase()}. This diverse background gives them an unconventional approach to problem-solving.`
+          `${formData.name} grew up in a family of engineers, developing a keen analytical mind and attention to detail. Their role as ${formData.role} stems from years of observing complex systems and finding elegant solutions to intricate problems.`,
+          `With a background in creative arts and business strategy, ${formData.name} brings a unique perspective to their work. They believe in challenging conventional wisdom and pushing boundaries in everything they do.`,
+          `${formData.name} started their career in a completely different field before discovering their passion for this role. This diverse background gives them an unconventional approach to problem-solving.`
         ];
         setFormData(prev => ({
           ...prev,
@@ -1328,3 +1411,12 @@ const ProjectLoomApp = () => {
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent mb-4"
                 rows="6"
                 maxLength="2500"
+              />
+              
+              <div className="flex space-x-4 mb-4">
+                <button
+                  type="button"
+                  onClick={generateBackstory}
+                  disabled={isGeneratingBackstory || !formData.name || !formData.role}
+                  className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
