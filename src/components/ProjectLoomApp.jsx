@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Users, MessageCircle, Settings, Play, Pause, Send, Upload, Trash2, Eye, EyeOff, Download, Loader2 } from 'lucide-react';
+import { Plus, Users, MessageCircle, Settings, Play, Pause, Send, Upload, Trash2, Eye, EyeOff, Download, Loader2, Key } from 'lucide-react';
 
 // Main App Component
 const ProjectLoomApp = () => {
@@ -7,9 +7,225 @@ const ProjectLoomApp = () => {
   const [personas, setPersonas] = useState([]);
   const [environments, setEnvironments] = useState([]);
   const [isSimulationRunning, setIsSimulationRunning] = useState(false);
+  const [apiKeys, setApiKeys] = useState({
+    openai: '',
+    claude: ''
+  });
+  const [showApiSettings, setShowApiSettings] = useState(false);
+
+  // API Integration Functions
+  const callOpenAI = async (messages, persona) => {
+    if (!apiKeys.openai) {
+      throw new Error('OpenAI API key not configured');
+    }
+
+    const systemPrompt = buildSystemPrompt(persona);
+    
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKeys.openai}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages.map(msg => ({
+            role: msg.type === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          }))
+        ],
+        max_tokens: persona.wordLimit || 200,
+        temperature: 0.8
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`OpenAI API Error: ${error.error?.message || 'Unknown error'}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+  };
+
+  const callClaude = async (messages, persona) => {
+    if (!apiKeys.claude) {
+      throw new Error('Claude API key not configured');
+    }
+
+    const systemPrompt = buildSystemPrompt(persona);
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKeys.claude,
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-sonnet-20240229',
+        max_tokens: persona.wordLimit || 200,
+        system: systemPrompt,
+        messages: messages.map(msg => ({
+          role: msg.type === 'user' ? 'user' : 'assistant',
+          content: msg.content
+        }))
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`Claude API Error: ${error.error?.message || 'Unknown error'}`);
+    }
+
+    const data = await response.json();
+    return data.content[0].text;
+  };
+
+  const buildSystemPrompt = (persona) => {
+    let prompt = `You are ${persona.name}, ${persona.role}\n\n`;
+    
+    if (persona.traits && persona.traits.length > 0) {
+      prompt += "Your personality traits:\n";
+      persona.traits.forEach(trait => {
+        const intensityDesc = {
+          'Weak': 'slightly',
+          'Neutral': 'moderately',
+          'Strong': 'very'
+        };
+        prompt += `- ${intensityDesc[trait.intensity] || 'moderately'} ${trait.name.toLowerCase()}\n`;
+      });
+      prompt += "\n";
+    }
+
+    if (persona.knowledgeHub) {
+      prompt += `Background and Knowledge:\n${persona.knowledgeHub}\n\n`;
+    }
+
+    prompt += `IMPORTANT: Stay in character as ${persona.name}. Respond based on your traits, role, and background. Keep responses conversational and authentic to your personality.`;
+
+    return prompt;
+  };
+
+  const callRealAI = async (persona, conversationHistory) => {
+    try {
+      let response;
+      
+      if (persona.llm === 'ChatGPT (OpenAI)') {
+        response = await callOpenAI(conversationHistory, persona);
+      } else if (persona.llm === 'Claude (Anthropic)') {
+        response = await callClaude(conversationHistory, persona);
+      } else {
+        return getSimulatedResponse(persona);
+      }
+
+      return response;
+    } catch (error) {
+      console.error(`AI API Error for ${persona.name}:`, error);
+      return `[${persona.name}]: ${error.message}. Falling back to simulated response: ${getSimulatedResponse(persona)}`;
+    }
+  };
+
+  const getSimulatedResponse = (persona) => {
+    const responses = [
+      `As ${persona.name}, given my role as ${persona.role}, I think we should approach this systematically. My experience tells me that this situation requires careful consideration of all stakeholders involved.`,
+      
+      `Speaking from my perspective as ${persona.role}, I'd like to challenge some assumptions here. We're looking at this from a narrow perspective, and I believe we need to expand our thinking beyond conventional solutions.`,
+      
+      `I appreciate the different viewpoints being shared. From my analytical perspective, I see several patterns emerging that we should address. Let me break down what I'm observing and propose a path forward.`,
+      
+      `This reminds me of a similar situation I encountered before. The key insight I gained was that sustainable solutions often require us to balance competing priorities rather than choosing sides.`,
+      
+      `I'm curious about the underlying motivations here. If we dig deeper into the 'why' behind these surface-level issues, I think we'll find more creative and effective approaches to resolution.`
+    ];
+    
+    return responses[Math.floor(Math.random() * responses.length)];
+  };
+
+  // API Settings Component
+  const ApiSettings = () => (
+    <div className="max-w-2xl mx-auto p-6">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8">
+        <div className="flex items-center mb-6">
+          <Key className="w-8 h-8 text-blue-600 mr-3" />
+          <h2 className="text-3xl font-bold text-gray-800">API Settings</h2>
+        </div>
+        
+        <div className="space-y-6">
+          <div className="p-4 bg-yellow-50 rounded-lg">
+            <h4 className="font-medium text-yellow-900 mb-2">🔑 Required for Real AI</h4>
+            <p className="text-sm text-yellow-800">
+              Add your API keys to enable real AI conversations. Without these, personas will use simulated responses.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              OpenAI API Key
+            </label>
+            <input
+              type="password"
+              value={apiKeys.openai}
+              onChange={(e) => setApiKeys(prev => ({ ...prev, openai: e.target.value }))}
+              placeholder="sk-..."
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Get your key from: <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">platform.openai.com/api-keys</a>
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Claude API Key
+            </label>
+            <input
+              type="password"
+              value={apiKeys.claude}
+              onChange={(e) => setApiKeys(prev => ({ ...prev, claude: e.target.value }))}
+              placeholder="sk-ant-..."
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Get your key from: <a href="https://console.anthropic.com/account/keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">console.anthropic.com/account/keys</a>
+            </p>
+          </div>
+
+          <div className="p-4 bg-blue-50 rounded-lg">
+            <h4 className="font-medium text-blue-900 mb-2">💰 Cost Information</h4>
+            <div className="text-sm text-blue-800 space-y-1">
+              <p><strong>OpenAI GPT-4:</strong> ~$0.01-0.05 per conversation turn</p>
+              <p><strong>Claude:</strong> ~$0.01-0.03 per conversation turn</p>
+              <p><strong>Tip:</strong> Start with $5-10 in API credits for testing</p>
+            </div>
+          </div>
+
+          <div className="flex space-x-4">
+            <button
+              onClick={() => {
+                alert('API keys saved! Your personas will now use real AI.');
+                setShowApiSettings(false);
+              }}
+              className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+            >
+              Save API Keys
+            </button>
+            <button
+              onClick={() => setShowApiSettings(false)}
+              className="flex-1 bg-gray-600 text-white py-3 px-6 rounded-lg hover:bg-gray-700 transition-colors font-semibold"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   // Navigation Component
-  const Navigation = () => (
+ const Navigation = () => (
     <nav className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4 shadow-lg">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -40,6 +256,13 @@ const ProjectLoomApp = () => {
             className={`px-4 py-2 rounded-lg transition-colors ${currentPage === 'simulation' ? 'bg-white text-purple-600' : 'hover:bg-purple-700'}`}
           >
             Simulation
+          </button>
+          <button
+            onClick={() => setShowApiSettings(true)}
+            className={`px-4 py-2 rounded-lg transition-colors flex items-center ${showApiSettings ? 'bg-white text-purple-600' : 'hover:bg-purple-700'}`}
+          >
+            <Key className="w-4 h-4 mr-2" />
+            API Keys
           </button>
         </div>
       </div>
@@ -741,39 +964,58 @@ const ProjectLoomApp = () => {
       }
     };
 
-    const simulateAIResponse = async (persona, context = '') => {
+      const simulateAIResponse = async (persona, context = '') => {
       setIsProcessing(true);
       
-      // Simulate AI processing delay
-      await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 2000));
-      
-      const responses = [
-        `As someone with ${persona.traits.map(t => t.name.toLowerCase()).join(', ')} tendencies, I think we should approach this systematically. My experience tells me that ${context || 'this situation'} requires careful consideration of all stakeholders involved.`,
+      try {
+        const conversationContext = localChatHistory.filter(msg => msg.type !== 'system');
         
-        `Given my role as ${persona.role.toLowerCase()}, I'd like to challenge some assumptions here. We're looking at this from a narrow perspective, and I believe we need to expand our thinking beyond conventional solutions.`,
+        let response;
+        let isRealAI = false;
         
-        `I appreciate the different viewpoints being shared. From my analytical perspective, I see several patterns emerging that we should address. Let me break down what I'm observing and propose a path forward.`,
+        if (apiKeys.openai && persona.llm === 'ChatGPT (OpenAI)') {
+          response = await callRealAI(persona, conversationContext);
+          isRealAI = true;
+        } else if (apiKeys.claude && persona.llm === 'Claude (Anthropic)') {
+          response = await callRealAI(persona, conversationContext);
+          isRealAI = true;
+        } else {
+          // Fallback to simulated response
+          await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 2000));
+          response = getSimulatedResponse(persona);
+        }
         
-        `This reminds me of a similar situation I encountered before. The key insight I gained was that sustainable solutions often require us to balance competing priorities rather than choosing sides.`,
+        const newMessage = {
+          id: Date.now(),
+          type: 'ai',
+          persona: persona.name,
+          content: response,
+          timestamp: new Date().toLocaleTimeString(),
+          llm: persona.llm,
+          isRealAI
+        };
         
-        `I'm curious about the underlying motivations here. If we dig deeper into the 'why' behind these surface-level issues, I think we'll find more creative and effective approaches to resolution.`
-      ];
-      
-      const response = responses[Math.floor(Math.random() * responses.length)];
-      
-      const newMessage = {
-        id: Date.now(),
-        type: 'ai',
-        persona: persona.name,
-        content: response,
-        timestamp: new Date().toLocaleTimeString(),
-        llm: persona.llm
-      };
-      
-      setLocalChatHistory(prev => [...prev, newMessage]);
-      setIsProcessing(false);
-      
-      return newMessage;
+        setLocalChatHistory(prev => [...prev, newMessage]);
+        setIsProcessing(false);
+        
+        return newMessage;
+      } catch (error) {
+        console.error('AI Response Error:', error);
+        const fallbackResponse = getSimulatedResponse(persona);
+        const newMessage = {
+          id: Date.now(),
+          type: 'ai',
+          persona: persona.name,
+          content: `[Connection Error]: ${fallbackResponse}`,
+          timestamp: new Date().toLocaleTimeString(),
+          llm: persona.llm,
+          isRealAI: false
+        };
+        
+        setLocalChatHistory(prev => [...prev, newMessage]);
+        setIsProcessing(false);
+        return newMessage;
+      }
     };
 
     const handleAutoLoop = async () => {
@@ -1060,13 +1302,13 @@ const ProjectLoomApp = () => {
     <div className="min-h-screen bg-gray-50">
       <Navigation />
       <main>
-        {currentPage === 'dashboard' && <Dashboard />}
-        {currentPage === 'create-persona' && <CreatePersona />}
-        {currentPage === 'create-environment' && <CreateEnvironment />}
-        {currentPage === 'simulation' && <Simulation />}
+        {showApiSettings && <ApiSettings />}
+        {!showApiSettings && currentPage === 'dashboard' && <Dashboard />}
+        {!showApiSettings && currentPage === 'create-persona' && <CreatePersona />}
+        {!showApiSettings && currentPage === 'create-environment' && <CreateEnvironment />}
+        {!showApiSettings && currentPage === 'simulation' && <Simulation />}
       </main>
     </div>
   );
-};
 
 export default ProjectLoomApp;
