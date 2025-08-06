@@ -6,7 +6,6 @@ const ProjectLoomApp = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [personas, setPersonas] = useState([]);
   const [environments, setEnvironments] = useState([]);
-  const [chatHistory, setChatHistory] = useState([]);
   const [isSimulationRunning, setIsSimulationRunning] = useState(false);
 
   // Navigation Component
