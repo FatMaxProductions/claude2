@@ -1310,5 +1310,6 @@ const ProjectLoomApp = () => {
       </main>
     </div>
   );
+};
 
 export default ProjectLoomApp;
