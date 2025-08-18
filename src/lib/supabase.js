@@ -114,54 +114,6 @@ export const db = {
     return env
   },
 
-  async updateEnvironment(id, updates) {
-    const { participants, ...envData } = updates
-    
-    // Update environment
-    const { data: env, error: envError } = await supabase
-      .from('environments')
-      .update(envData)
-      .eq('id', id)
-      .select()
-      .single()
-    
-    if (envError) throw envError
-
-    // Update participants if provided
-    if (participants !== undefined) {
-      // Remove existing participants
-      await supabase
-        .from('environment_participants')
-        .delete()
-        .eq('environment_id', id)
-
-      // Add new participants
-      if (participants.length > 0) {
-        const participantData = participants.map(p => ({
-          environment_id: id,
-          persona_id: p.id
-        }))
-
-        const { error: participantError } = await supabase
-          .from('environment_participants')
-          .insert(participantData)
-
-        if (participantError) throw participantError
-      }
-    }
-
-    return env
-  },
-
-  async deleteEnvironment(id) {
-    const { error } = await supabase
-      .from('environments')
-      .delete()
-      .eq('id', id)
-    
-    if (error) throw error
-  },
-
   // Simulations
   async getSimulations() {
     const { data, error } = await supabase
@@ -200,15 +152,6 @@ export const db = {
     
     if (error) throw error
     return data
-  },
-
-  async deleteSimulation(id) {
-    const { error } = await supabase
-      .from('simulations')
-      .delete()
-      .eq('id', id)
-    
-    if (error) throw error
   },
 
   // API Keys
@@ -250,45 +193,6 @@ export const db = {
     
     if (error) throw error
     return data?.encrypted_key
-  },
-
-  async deleteApiKey(provider) {
-    const { error } = await supabase
-      .from('user_api_keys')
-      .delete()
-      .eq('provider', provider)
-    
-    if (error) throw error
-  },
-
-  // Profile
-  async getProfile() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('User not authenticated')
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single()
-    
-    if (error) throw error
-    return data
-  },
-
-  async updateProfile(updates) {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('User not authenticated')
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', user.id)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data
   }
 }
 
@@ -328,11 +232,6 @@ export const auth = {
     return user
   },
 
-  async resetPassword(email) {
-    const { error } = await supabase.auth.resetPasswordForEmail(email)
-    if (error) throw error
-  },
-
   onAuthStateChange(callback) {
     return supabase.auth.onAuthStateChange(callback)
   }
@@ -340,14 +239,11 @@ export const auth = {
 
 // Utility functions
 export const utils = {
-  // Simple encryption for API keys (in production, use proper server-side encryption)
   encryptApiKey(key) {
-    // This is a basic obfuscation - in production, encrypt on the server
     return btoa(key)
   },
 
   decryptApiKey(encryptedKey) {
-    // This is a basic obfuscation - in production, decrypt on the server
     try {
       return atob(encryptedKey)
     } catch {
