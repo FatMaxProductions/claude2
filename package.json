@@ -4,6 +4,7 @@
   "description": "AI Simulation Platform - Create and interact with customizable AI-powered personas in dynamic environments",
   "private": true,
   "dependencies": {
+    "@supabase/supabase-js": "^2.55.0",
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^13.3.0",
     "@testing-library/user-event": "^13.5.0",
