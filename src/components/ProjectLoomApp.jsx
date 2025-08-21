@@ -425,13 +425,16 @@ const ProjectLoomApp = () => {
       }
 
       const newPersona = {
-        ...formData,
-        traits: Object.values(selectedTraits),
-        files: uploadedFiles,
-        id: Date.now()
-      };
+  name: formData.name,
+  llm: formData.llm,
+  role: formData.role,
+  knowledge_hub: formData.knowledge_hub,
+  traits: Object.values(selectedTraits),
+  files: uploadedFiles.map(f => ({ name: f.name, size: f.size }))
+};
 
-      setPersonas(prev => [...prev, newPersona]);
+const savedPersona = await db.createPersona(newPersona);
+setPersonas(prev => [savedPersona, ...prev]);
       
       // Reset form
       setFormData({ name: '', llm: '', role: '', knowledgeHub: '', traits: [] });
