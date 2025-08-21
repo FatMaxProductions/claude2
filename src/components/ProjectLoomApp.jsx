@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Users, MessageCircle, Settings, Play, Pause, Send, Upload, Trash2, Eye, EyeOff, Download, Loader2, Key } from 'lucide-react';
+import { Plus, Users, MessageCircle, Settings, Play, Pause, Send, Upload, Trash2, Eye, EyeOff, Download, Loader2, Key, LogOut, User } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { db } from '../lib/supabase';
 
 // Main App Component
 const ProjectLoomApp = () => {
