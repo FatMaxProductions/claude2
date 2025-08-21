@@ -30,13 +30,20 @@ const ProjectLoomApp = () => {
       setLoading(true);
       setError(null);
       
-      const [personasData, environmentsData, simulationsData, apiKeysData] = await Promise.all([
-        db.getPersonas(),
-        db.getEnvironments(),
-        db.getSimulations(),
-        db.getApiKeys()
-      ]);
+      const [personasData, environmentsData, simulationsData] = await Promise.all([
+  db.getPersonas(),
+  db.getEnvironments(),
+  db.getSimulations()
+]);
 
+// Handle API keys separately with error handling
+let apiKeysData = [];
+try {
+  apiKeysData = await db.getApiKeys();
+} catch (error) {
+  console.log('API keys table not accessible, skipping');
+  apiKeysData = [];
+}
       setPersonas(personasData);
       setEnvironments(environmentsData);
       setSimulations(simulationsData);
