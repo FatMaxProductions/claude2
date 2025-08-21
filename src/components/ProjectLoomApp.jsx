@@ -417,7 +417,7 @@ const ProjectLoomApp = () => {
       setUploadedFiles(prev => [...prev, ...files]);
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
       e.preventDefault();
       if (!formData.name || !formData.llm || !formData.role) {
         alert('Please fill in all required fields');
