@@ -519,16 +519,13 @@ const ProjectLoomApp = () => {
                     {uploadedFiles.map((file, index) => (
                       <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                         <span className="text-sm">{file.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => setUploadedFiles(prev => prev.filter((_, i) => i !== index))}
-                          <button
-                         type="button"
-                         onClick={() => setUploadedFiles(prev => prev.filter((_, i) => i !== index))}
-                         className="text-red-500 hover:text-red-700"
-                       >
-                         <Trash2 className="w-4 h-4" />
-                       </button>
+                       <button
+  type="button"
+  onClick={() => setUploadedFiles(prev => prev.filter((_, i) => i !== index))}
+  className="text-red-500 hover:text-red-700"
+>
+  <Trash2 className="w-4 h-4" />
+</button>
                      </div>
                    ))}
                  </div>
