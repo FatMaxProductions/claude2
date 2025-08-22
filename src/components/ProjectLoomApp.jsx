@@ -411,6 +411,27 @@ const ProjectLoomApp = () => {
     );
   };
 
+// Persona Detail Component
+  const PersonaDetail = () => {
+    const persona = personas.find(p => p.id === selectedPersonaId);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editFormData, setEditFormData] = useState(null);
+    const [selectedTraits, setSelectedTraits] = useState({});
+    const [uploadedFiles, setUploadedFiles] = useState([]);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+    const traitCategories = {
+      'Personality Type': ['Introverted', 'Extroverted', 'Ambivert', 'Optimistic', 'Realistic', 'Cynical'],
+      'Cognitive Approach': ['Analytical', 'Creative', 'Strategic', 'Intuitive', 'Detail-oriented', 'Big-picture thinker'],
+      'Communication Style': ['Assertive', 'Passive', 'Persuasive', 'Diplomatic', 'Blunt', 'Humorous'],
+      'Emotional Tone': ['Calm', 'Passionate', 'Stoic', 'Empathetic', 'Playful', 'Anxious'],
+      'Problem-Solving Strategy': ['Logical', 'Experimental', 'Collaborative', 'Cautious', 'Decisive', 'Adaptive'],
+      'Motivations / Drives': ['Power', 'Curiosity', 'Recognition', 'Security', 'Achievement', 'Belonging']
+    };
+
+  
   // API Settings Component
   const ApiSettings = () => {
     const [localApiKeys, setLocalApiKeys] = useState({ openai: '', claude: '' });
@@ -617,26 +638,7 @@ const ProjectLoomApp = () => {
 
   };
 
-  // Persona Detail Component
-  const PersonaDetail = () => {
-    const persona = personas.find(p => p.id === selectedPersonaId);
-    const [isEditing, setIsEditing] = useState(false);
-    const [editFormData, setEditFormData] = useState(null);
-    const [selectedTraits, setSelectedTraits] = useState({});
-    const [uploadedFiles, setUploadedFiles] = useState([]);
-    const [isSaving, setIsSaving] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false);
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-    const traitCategories = {
-      'Personality Type': ['Introverted', 'Extroverted', 'Ambivert', 'Optimistic', 'Realistic', 'Cynical'],
-      'Cognitive Approach': ['Analytical', 'Creative', 'Strategic', 'Intuitive', 'Detail-oriented', 'Big-picture thinker'],
-      'Communication Style': ['Assertive', 'Passive', 'Persuasive', 'Diplomatic', 'Blunt', 'Humorous'],
-      'Emotional Tone': ['Calm', 'Passionate', 'Stoic', 'Empathetic', 'Playful', 'Anxious'],
-      'Problem-Solving Strategy': ['Logical', 'Experimental', 'Collaborative', 'Cautious', 'Decisive', 'Adaptive'],
-      'Motivations / Drives': ['Power', 'Curiosity', 'Recognition', 'Security', 'Achievement', 'Belonging']
-    };
-
+  
     useEffect(() => {
       if (persona && isEditing && !editFormData) {
         setEditFormData({
