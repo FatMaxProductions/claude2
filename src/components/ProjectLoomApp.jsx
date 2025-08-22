@@ -615,6 +615,8 @@ const ProjectLoomApp = () => {
     </div>
   );
 
+  };
+
   // Persona Detail Component
   const PersonaDetail = () => {
     const persona = personas.find(p => p.id === selectedPersonaId);
