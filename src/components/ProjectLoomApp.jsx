@@ -7,6 +7,7 @@ import { db } from '../lib/supabase';
 const ProjectLoomApp = () => {
   const { user, signOut } = useAuth();
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [selectedPersonaId, setSelectedPersonaId] = useState(null);
   const [personas, setPersonas] = useState([]);
   const [environments, setEnvironments] = useState([]);
   const [simulations, setSimulations] = useState([]);
@@ -585,7 +586,14 @@ const ProjectLoomApp = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {personas.map((persona) => (
-              <div key={persona.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+              <div 
+                key={persona.id} 
+                className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => {
+                  setSelectedPersonaId(persona.id);
+                  setCurrentPage('persona-detail');
+                }}
+              >
                 <h4 className="font-semibold text-lg">{persona.name}</h4>
                 <p className="text-sm text-gray-600 mb-2">{persona.llm}</p>
                 <p className="text-sm text-gray-700">{persona.role}</p>
@@ -607,7 +615,474 @@ const ProjectLoomApp = () => {
     </div>
   );
 
-  // Create Persona Component (keeping your existing implementation)
+  // Persona Detail Component
+  const PersonaDetail = () => {
+    const persona = personas.find(p => p.id === selectedPersonaId);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editFormData, setEditFormData] = useState(null);
+    const [selectedTraits, setSelectedTraits] = useState({});
+    const [uploadedFiles, setUploadedFiles] = useState([]);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+    const traitCategories = {
+      'Personality Type': ['Introverted', 'Extroverted', 'Ambivert', 'Optimistic', 'Realistic', 'Cynical'],
+      'Cognitive Approach': ['Analytical', 'Creative', 'Strategic', 'Intuitive', 'Detail-oriented', 'Big-picture thinker'],
+      'Communication Style': ['Assertive', 'Passive', 'Persuasive', 'Diplomatic', 'Blunt', 'Humorous'],
+      'Emotional Tone': ['Calm', 'Passionate', 'Stoic', 'Empathetic', 'Playful', 'Anxious'],
+      'Problem-Solving Strategy': ['Logical', 'Experimental', 'Collaborative', 'Cautious', 'Decisive', 'Adaptive'],
+      'Motivations / Drives': ['Power', 'Curiosity', 'Recognition', 'Security', 'Achievement', 'Belonging']
+    };
+
+    useEffect(() => {
+      if (persona && isEditing && !editFormData) {
+        setEditFormData({
+          name: persona.name,
+          llm: persona.llm,
+          role: persona.role,
+          knowledge_hub: persona.knowledge_hub || '',
+          traits: persona.traits || []
+        });
+
+        // Set up traits for editing
+        const traitsObj = {};
+        persona.traits?.forEach(trait => {
+          const key = `${trait.category}-${trait.name}`;
+          traitsObj[key] = trait;
+        });
+        setSelectedTraits(traitsObj);
+        setUploadedFiles(persona.files || []);
+      }
+    }, [persona, isEditing, editFormData]);
+
+    if (!persona) {
+      return (
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8 text-center">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Persona Not Found</h2>
+            <p className="text-gray-600 mb-6">The persona you're looking for doesn't exist or may have been deleted.</p>
+            <button
+              onClick={() => setCurrentPage('dashboard')}
+              className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    const handleEdit = () => {
+      setIsEditing(true);
+    };
+
+    const handleCancelEdit = () => {
+      setIsEditing(false);
+      setEditFormData(null);
+      setSelectedTraits({});
+      setUploadedFiles([]);
+    };
+
+    const handleTraitToggle = (category, trait) => {
+      const key = `${category}-${trait}`;
+      setSelectedTraits(prev => {
+        const newTraits = { ...prev };
+        if (newTraits[key]) {
+          delete newTraits[key];
+        } else {
+          newTraits[key] = { name: trait, category, intensity: 'Neutral' };
+        }
+        return newTraits;
+      });
+    };
+
+    const handleIntensityChange = (traitKey, intensity) => {
+      setSelectedTraits(prev => ({
+        ...prev,
+        [traitKey]: { ...prev[traitKey], intensity }
+      }));
+    };
+
+    const handleFileUpload = (event) => {
+      const files = Array.from(event.target.files);
+      setUploadedFiles(prev => [...prev, ...files.map(f => ({ name: f.name, size: f.size }))]);
+    };
+
+    const handleSave = async () => {
+      if (!editFormData.name || !editFormData.llm || !editFormData.role) {
+        alert('Please fill in all required fields');
+        return;
+      }
+
+      setIsSaving(true);
+      try {
+        const updatedPersona = {
+          name: editFormData.name,
+          llm: editFormData.llm,
+          role: editFormData.role,
+          knowledge_hub: editFormData.knowledge_hub,
+          traits: Object.values(selectedTraits),
+          files: uploadedFiles
+        };
+
+        const savedPersona = await db.updatePersona(persona.id, updatedPersona);
+        
+        // Update local state
+        setPersonas(prev => prev.map(p => p.id === persona.id ? { ...p, ...savedPersona } : p));
+        
+        setIsEditing(false);
+        setEditFormData(null);
+        alert('Persona updated successfully!');
+        
+      } catch (error) {
+        console.error('Error updating persona:', error);
+        alert('Failed to update persona. Please try again.');
+      } finally {
+        setIsSaving(false);
+      }
+    };
+
+    const handleDelete = async () => {
+      setIsDeleting(true);
+      try {
+        await db.deletePersona(persona.id);
+        
+        // Update local state
+        setPersonas(prev => prev.filter(p => p.id !== persona.id));
+        
+        alert('Persona deleted successfully!');
+        setCurrentPage('dashboard');
+        
+      } catch (error) {
+        console.error('Error deleting persona:', error);
+        alert('Failed to delete persona. Please try again.');
+      } finally {
+        setIsDeleting(false);
+        setShowDeleteConfirm(false);
+      }
+    };
+
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8">
+          {/* Header with breadcrumb */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <nav className="text-sm text-gray-500 mb-2">
+                <button 
+                  onClick={() => setCurrentPage('dashboard')}
+                  className="hover:text-purple-600 transition-colors"
+                >
+                  Dashboard
+                </button>
+                <span className="mx-2">/</span>
+                <span>{persona.name}</span>
+              </nav>
+              <h2 className="text-3xl font-bold text-gray-800">{persona.name}</h2>
+              <p className="text-gray-600">{persona.llm}</p>
+            </div>
+            
+            <div className="flex space-x-3">
+              {!isEditing ? (
+                <>
+                  <button
+                    onClick={handleEdit}
+                    className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition-colors"
+                  >
+                    {isSaving ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4 mr-2" />
+                    )}
+                    {isSaving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Cancel
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Content */}
+          {!isEditing ? (
+            // View Mode
+            <div className="space-y-8">
+              {/* Basic Information */}
+              <div>
+                <h3 className="text-xl font-semibold text-gray-800 border-b border-gray-200 pb-2 mb-4">Basic Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                    <p className="text-gray-800 bg-gray-50 p-3 rounded-lg">{persona.name}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">LLM Provider</label>
+                    <p className="text-gray-800 bg-gray-50 p-3 rounded-lg">{persona.llm}</p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Role / Function</label>
+                  <p className="text-gray-800 bg-gray-50 p-3 rounded-lg">{persona.role}</p>
+                </div>
+              </div>
+
+              {/* Traits */}
+              {persona.traits && persona.traits.length > 0 && (
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-800 border-b border-gray-200 pb-2 mb-4">Personality Traits</h3>
+                  <div className="space-y-4">
+                    {Object.entries(traitCategories).map(([category, _]) => {
+                      const categoryTraits = persona.traits.filter(trait => trait.category === category);
+                      if (categoryTraits.length === 0) return null;
+                      
+                      return (
+                        <div key={category}>
+                          <h4 className="font-medium text-gray-700 mb-2">{category}</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {categoryTraits.map((trait, i) => (
+                              <span key={i} className={`px-3 py-1 rounded-full text-sm ${
+                                trait.intensity === 'Strong' ? 'bg-purple-200 text-purple-800' :
+                                trait.intensity === 'Weak' ? 'bg-gray-200 text-gray-700' :
+                                'bg-purple-100 text-purple-700'
+                              }`}>
+                                {trait.name} ({trait.intensity})
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Knowledge Hub */}
+              <div>
+                <h3 className="text-xl font-semibold text-gray-800 border-b border-gray-200 pb-2 mb-4">Knowledge Hub</h3>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  {persona.knowledge_hub ? (
+                    <p className="text-gray-800 whitespace-pre-wrap">{persona.knowledge_hub}</p>
+                  ) : (
+                    <p className="text-gray-500 italic">No knowledge hub content added.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Files */}
+              {persona.files && persona.files.length > 0 && (
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-800 border-b border-gray-200 pb-2 mb-4">Uploaded Files</h3>
+                  <div className="space-y-2">
+                    {persona.files.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <span className="text-sm text-gray-800">{file.name}</span>
+                        <span className="text-xs text-gray-500">{file.size ? `${Math.round(file.size / 1024)}KB` : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            // Edit Mode
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
+                <input
+                  type="text"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Choose an LLM *</label>
+                <div className="space-y-2">
+                  {['ChatGPT (OpenAI)', 'Gemini (Google)', 'Claude (Anthropic)'].map(llm => (
+                    <label key={llm} className="flex items-center">
+                      <input
+                        type="radio"
+                        name="llm"
+                        value={llm}
+                        checked={editFormData.llm === llm}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, llm: e.target.value }))}
+                        className="mr-3"
+                        required
+                      />
+                      <span>{llm}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Role / Function *</label>
+                <textarea
+                  value={editFormData.role}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, role: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  rows="3"
+                  required
+                />
+              </div>
+
+              {/* Edit Traits */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Traits Section</h3>
+                {Object.entries(traitCategories).map(([category, traits]) => (
+                  <div key={category} className="mb-6">
+                    <h4 className="font-medium text-gray-700 mb-3">{category}</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {traits.map(trait => {
+                        const traitKey = `${category}-${trait}`;
+                        const isSelected = selectedTraits[traitKey];
+                        
+                        return (
+                          <div key={trait} className="space-y-2">
+                            <label className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={!!isSelected}
+                                onChange={() => handleTraitToggle(category, trait)}
+                                className="mr-2"
+                              />
+                              <span className="text-sm">{trait}</span>
+                            </label>
+                            
+                            {isSelected && (
+                              <div className="ml-6">
+                                <select
+                                  value={isSelected.intensity}
+                                  onChange={(e) => handleIntensityChange(traitKey, e.target.value)}
+                                  className="text-xs p-1 border border-gray-300 rounded"
+                                >
+                                  <option value="Weak">Weak</option>
+                                  <option value="Neutral">Neutral</option>
+                                  <option value="Strong">Strong</option>
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Edit Knowledge Hub */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Knowledge Hub</label>
+                <textarea
+                  value={editFormData.knowledge_hub}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, knowledge_hub: e.target.value }))}
+                  placeholder="Write a custom backstory or key information..."
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent mb-4"
+                  rows="6"
+                  maxLength="2500"
+                />
+                
+                <div className="flex space-x-4 mb-4">
+                  <label className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Files
+                    <input
+                      type="file"
+                      multiple
+                      accept=".pdf,.txt,.docx"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                {uploadedFiles.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="font-medium text-gray-700 mb-2">Files:</h4>
+                    <div className="space-y-2">
+                      {uploadedFiles.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                          <span className="text-sm">{file.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => setUploadedFiles(prev => prev.filter((_, i) => i !== index))}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-right text-sm text-gray-500">
+                  {editFormData.knowledge_hub.length}/2500 characters
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md mx-4">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Delete Persona</h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete "{persona.name}"? This action cannot be undone.
+              </p>
+              <div className="flex space-x-4">
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="flex-1 bg-red-600 text-white py-3 px-6 rounded-lg hover:bg-red-700 disabled:bg-gray-400 transition-colors font-semibold flex items-center justify-center"
+                >
+                  {isDeleting ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4 mr-2" />
+                  )}
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 bg-gray-600 text-white py-3 px-6 rounded-lg hover:bg-gray-700 transition-colors font-semibold"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   const CreatePersona = () => {
     const [formData, setFormData] = useState({
       name: '',
@@ -1090,6 +1565,7 @@ const ProjectLoomApp = () => {
         {showApiSettings && <ApiSettings />}
         {!showApiSettings && currentPage === 'dashboard' && <Dashboard />}
         {!showApiSettings && currentPage === 'profile' && <UserProfile />}
+        {!showApiSettings && currentPage === 'persona-detail' && <PersonaDetail />}
         {!showApiSettings && currentPage === 'create-persona' && <CreatePersona />}
         {!showApiSettings && currentPage === 'create-environment' && <CreateEnvironment />}
         {!showApiSettings && currentPage === 'simulation' && <Simulation />}
