@@ -155,7 +155,7 @@ const ProjectLoomApp = () => {
         totalSimulations: simulations.length,
         joinDate: user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'
       });
-    }, [personas, environments, simulations, user]);
+    }, [personas.length, environments.length, simulations.length, user?.created_at]);
 
     const handleSave = async () => {
       setIsSaving(true);
