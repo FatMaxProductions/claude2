@@ -141,21 +141,14 @@ const ProjectLoomApp = () => {
       role: user?.user_metadata?.role || ''
     });
     const [isSaving, setIsSaving] = useState(false);
-    const [stats, setStats] = useState({
+    
+    // Calculate stats directly instead of using useEffect
+    const stats = {
       totalPersonas: personas.length,
       totalEnvironments: environments.length,
       totalSimulations: simulations.length,
       joinDate: user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'
-    });
-
-    useEffect(() => {
-      setStats({
-        totalPersonas: personas.length,
-        totalEnvironments: environments.length,
-        totalSimulations: simulations.length,
-        joinDate: user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'
-      });
-    }, [personas.length, environments.length, simulations.length, user?.created_at]);
+    };
 
     const handleSave = async () => {
       setIsSaving(true);
